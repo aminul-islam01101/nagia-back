@@ -1,0 +1,168 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id             String           @id @default(cuid())
+  email          String           @unique
+  username       String           @unique
+  password       String
+  role           Role             @default(INVESTOR)
+  isVerified     Boolean          @default(false)
+  profile        Profile?
+  UserInvestment UserInvestment[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  AccountDetails AccountDetails[]
+  PaymentDetails PaymentDetails[]
+  notifications  Notification[]
+  transactions   Transaction[]
+  checkout       Checkout[]
+  
+
+  @@index([email, username])
+}
+
+model Profile {
+  id           String   @id @default(cuid())
+  fullname     String?
+  profileImage String?
+  phoneNumber  String?
+  bio          String?
+  country      String?
+  state        String?
+  lastLogin    DateTime @default(now())
+  user         Account  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String   @unique
+}
+
+model InvestmentNews {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  link        String?
+  source      String?
+  image       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model InvestmentOpportunity {
+  id              String           @id @default(cuid())
+  title           String
+  amount          Int
+  image           String
+  growthRate      Int?
+  feesAndExpenses Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  UserInvestment  UserInvestment[]
+  transaction     Transaction[]
+}
+
+model UserInvestment {
+  id                      String                @id @default(cuid())
+  quantity                Int
+  purchasePrice           Float
+  status                  Status
+  transactionType         TransactionType
+  totalInvestment         Int
+  user                    Account               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                  String
+  investmentOpportunity   InvestmentOpportunity @relation(fields: [investmentOpportunityId], references: [id], onDelete: Cascade)
+  investmentOpportunityId String
+  SellProduct             SellProduct[]
+  verified                Boolean               @default(false)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+}
+
+model SellProduct {
+  id               String         @id @default(cuid())
+  approved         Boolean        @default(false)
+  quantity         Int
+  bankAccount      String
+  UserInvestment   UserInvestment @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
+  userInvestmentId String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model AccountDetails {
+  id                String   @id @default(cuid())
+  bankName          String
+  accountNumber     String
+  accountHolderName String
+  user              Account? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String?
+}
+
+model PaymentDetails {
+  id             String   @id @default(cuid())
+  cardHolderName String
+  cardNumber     String
+  expiryMonth    Int
+  expiryYear     Int
+  cvv            Int
+  user           Account? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  message   String
+  read      Boolean  @default(false)
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id                      String                @id @default(cuid())
+  transactionType         TransactionType
+  amount                  Int
+  investmentOpportunity   InvestmentOpportunity @relation(fields: [investmentOpportunityId], references: [id], onDelete: Cascade)
+  investmentOpportunityId String
+  accountId               String
+  account                 Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+}
+
+model Checkout {
+  id          String   @id @default(cuid())
+  name        String
+  phoneNumber String
+  email       String
+  address     String
+  acceptTerms Boolean
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  INVESTOR
+  ADMIN
+}
+
+enum Status {
+  completed
+  pending
+  failed
+}
+
+enum TransactionType {
+  Deposit
+  Cashout
+}
