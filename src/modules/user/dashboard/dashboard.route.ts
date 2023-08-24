@@ -128,6 +128,34 @@ router.get("/opportunity", asyncHandler(dashboardModule.dashboardController.getO
 
 /**
  * @swagger
+ * /api/v1/user/dashboard/opportunity-titles:
+ *   get:
+ *     tags:
+ *       - UserDashboard
+ *     summary: Get investment opportunity titles and amounts
+ *     description: Retrieve investment opportunity titles and amounts in the specified format
+ *     responses:
+ *       200:
+ *         description: Opportunities retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   label:
+ *                     type: string
+ *                     description: The title of the investment opportunity
+ *                   value:
+ *                     type: integer
+ *                     description: The amount of the investment opportunity
+ */
+
+router.get("/opportunity-titles", asyncHandler(dashboardModule.dashboardController.getOpportunityTitles.bind(dashboardModule)));
+
+/**
+ * @swagger
  * /api/v1/user/dashboard/opportunity/{id}:
  *   get:
  *     tags:

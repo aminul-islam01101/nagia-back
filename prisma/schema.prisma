@@ -89,7 +89,7 @@ model SellProduct {
   id               String         @id @default(cuid())
   approved         Boolean        @default(false)
   quantity         Int
-  bankAccount      String
+  phoneNumber      String
   UserInvestment   UserInvestment @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
   userInvestmentId String
   createdAt        DateTime       @default(now())

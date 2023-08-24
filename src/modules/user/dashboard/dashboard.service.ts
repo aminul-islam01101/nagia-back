@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/array-type */
 import prisma from "@db/prisma.db";
 import type { TransactionStat } from "@interfaces/basic.types";
 import type {
@@ -112,6 +113,21 @@ export class DashboardService {
     };
   }
 
+  async getOpportunityTittles(): Promise<Promise<Record<string, any>>> {
+    const opportunities = await prisma.investmentOpportunity.findMany({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    const formattedOpportunities = opportunities.map((opportunity) => ({
+      label: opportunity.title,
+      value: opportunity.amount,
+    }));
+
+    return formattedOpportunities;
+  }
+
   async getInvestmentOpportunityById(id: string): Promise<InvestmentOpportunity | null> {
     const investmentOpportunity = await prisma.investmentOpportunity.findUnique({
       where: { id },
@@ -206,13 +222,13 @@ export class DashboardService {
     }
   }
 
-  async sellProduct(userInvestmentId: string, quantity: number, bankAccount: string): Promise<SellProduct> {
+  async sellProduct(userInvestmentId: string, quantity: number, phoneNumber: string): Promise<SellProduct> {
     return await prisma.sellProduct.create({
       data: {
         approved: false,
         userInvestmentId,
         quantity,
-        bankAccount,
+        phoneNumber,
       },
     });
   }

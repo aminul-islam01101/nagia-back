@@ -30,7 +30,11 @@ export class DashboardService {
         isVerified: true,
         createdAt: true,
         updatedAt: true,
-      
+        profile: {
+          select: {
+            phoneNumber: true, // Include phoneNumber from the Profile schema
+          },
+        },
       },
     });
     const count = await prisma.account.count();

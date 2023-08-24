@@ -57,6 +57,11 @@ export class DashboardController {
     handleResponse(res, 200, "Opportunity retrieved successfully", true, opportunity);
   }
 
+  async getOpportunityTitles(req: Request, res: Response): Promise<void> {
+    const opportunities = await this.dashboardService.getOpportunityTittles();
+    handleResponse(res, 200, 'Opportunities retrieved successfully', true, opportunities);
+  }
+
   async getOpportunityById(req: Request, res: Response): Promise<void> {
     try {
       const parsed = await OpportunityIdParams.safeParseAsync({ opportunityId: req.params.id });
@@ -148,11 +153,11 @@ export class DashboardController {
       if (transactionResult.status === true) {
       
         // const { receiver, link } = await emailVerificationSetup(email, "/api/v1/user/account/verify/");
-        await sendPaymentConfirmationEmail(
-          email,
-          "Payment confirmation email",
-          `Congratulations. You have successfully done your transaction. Your transaction reference id is ${transactionResult.data.reference as string}`
-        );
+        // await sendPaymentConfirmationEmail(
+        //   email,
+        //   "Payment confirmation email",
+        //   `Congratulations. You have successfully done your transaction. Your transaction reference id is ${transactionResult.data.reference as string}`
+        // );
 
         const products = await this.dashboardService.buyProduct(
           userId,
@@ -178,8 +183,6 @@ export class DashboardController {
 
   async handlePaystackCallback(req: Request, res: Response): Promise<void> {
     const { reference, userInvestmentId, checkoutId } = req.query;
-    console.log('🌼 🔥🔥 file: dashboard.controller.ts:181 🔥🔥 DashboardController 🔥🔥 handlePaystackCallback 🔥🔥  reference, userInvestmentId, checkoutId🌼',  reference, userInvestmentId, checkoutId);
-
     if ((req as AuthRequest).user === undefined) {
       handleResponse(res, 401, "Not logged in or unauthorized", false, {});
       return;
@@ -324,6 +327,8 @@ You'll get further information from the insurance company on next steps to follo
     }
   }
 
+
+  //! sell product
   async sellProduct(req: Request, res: Response): Promise<void> {
     if ((req as AuthRequest).user === undefined) {
       handleResponse(res, 401, "Not logged in or unauthorized", false, {});
@@ -334,9 +339,11 @@ You'll get further information from the insurance company on next steps to follo
       handleResponse(res, 401, "UserId not found, check that you're logged in", false, {});
       return;
     }
+    const userInfo = await this.dashboardService.getUserById(userId);
     const passed = await SellProductSchema.safeParseAsync(req.body);
     if (passed.success) {
-      const { investmentOpportunityId, quantity, bankAccount } = passed.data;
+      const { investmentOpportunityId, quantity, phoneNumber } = passed.data;
+      const opportunity = await this.dashboardService.getInvestmentOpportunityById(investmentOpportunityId)
 
       const userInvestment = await this.dashboardService.getUserInvestmentByOpportunity(
         userId,
@@ -351,7 +358,7 @@ You'll get further information from the insurance company on next steps to follo
         handleResponse(res, 400, "Cannot sell more than the available quantity", false, {});
         return;
       }
-      const waitingForApproval = await this.dashboardService.sellProduct(userInvestment.id, quantity, bankAccount);
+      const waitingForApproval = await this.dashboardService.sellProduct(userInvestment.id, quantity, phoneNumber);
       if (waitingForApproval !== null) {
         handleResponse(res, 200, "Waiting for approval from admin to get your product sold", true, {
           waitingForApproval,
@@ -361,6 +368,20 @@ You'll get further information from the insurance company on next steps to follo
         await this.notificationService.createNotification(userId, {
           message: `Product has been initiated to be sold ${investmentOpportunityId} `,
         });
+         await sendPaymentConfirmationEmail(
+          emails.admin,
+          "sell confirmation email",
+          `There is a sell request from user from
+
+          username: ${userInfo?.username as string},
+          Email: ${userInfo?.email as string},
+          Phone Number: ${phoneNumber},
+          product Name:${opportunity?.title as string},
+          quantity: ${quantity}, 
+          amount: ${amount} NGN,
+          investmentOpportunityId: ${investmentOpportunityId}
+          `
+        );
         return;
       }
       handleResponse(res, 400, "can't get approval for the product", false, { waitingForApproval });

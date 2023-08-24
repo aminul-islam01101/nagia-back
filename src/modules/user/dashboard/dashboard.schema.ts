@@ -24,7 +24,7 @@ export type BuyProductType = z.infer<typeof BuyProductSchema>;
 export const SellProductSchema = z.object({
   investmentOpportunityId: z.string().cuid(),
   quantity: z.number().min(1),
-  bankAccount: z.string().cuid(),
+   phoneNumber: z.string(),
 });
 
 export type SellProductType = z.infer<typeof SellProductSchema>;

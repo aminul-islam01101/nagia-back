@@ -1,6 +1,6 @@
 export const emails = {
   info: "Nagaiagrotrade@gmail.com",
-  admin: "Nagaiagrotrade@gmail.com",
+  admin: "ritapa6488@backva.com",
   noReply: "no-reply@nagaing.com",
   support: "support@nagaing.com",
 };
