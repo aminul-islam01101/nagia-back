@@ -12,6 +12,7 @@ import type {
   Transaction,
   TransactionType,
   UserInvestment,
+  SellRequests
 } from "@prisma/client";
 import type {
   AccountDetailsType,
@@ -222,16 +223,43 @@ export class DashboardService {
     }
   }
 
-  async sellProduct(userInvestmentId: string, quantity: number, phoneNumber: string): Promise<SellProduct> {
+ 
+
+  async sellProduct(userInvestmentId: string, quantity: number, phoneNumber: string, ): Promise<SellProduct> {
     return await prisma.sellProduct.create({
       data: {
         approved: false,
         userInvestmentId,
         quantity,
         phoneNumber,
+ 
+
       },
     });
   }
+
+  async  updateUserInvestmentSellRequestQuantity(id: string, quantityToAdd: number):Promise<UserInvestment>  {
+   
+      // Find the UserInvestment by ID
+      const userInvestment = await prisma.userInvestment.findUnique({
+        where: { id },
+      });
+  
+      if (userInvestment ===null) {
+        throw new Error(`UserInvestment with ID ${id} not found`);
+      }
+  
+      // Update the sellRequestQuantity by adding the specified quantity
+      const updatedUserInvestment = await prisma.userInvestment.update({
+        where: { id },
+        data: {
+          sellRequestQuantity: userInvestment.sellRequestQuantity + quantityToAdd,
+        },
+      });
+  
+      return updatedUserInvestment;
+    }
+
 
   async getUserInvestment(userId: string, params: PaginationSchema): Promise<Record<string, any>> {
     const { page, limit } = params;
@@ -344,7 +372,8 @@ export class DashboardService {
     type: TransactionType,
     investmentOpportunityId: string,
     accountId: string,
-    amount: number
+    amount: number,
+    status: string
   ): Promise<Transaction> {
     return await prisma.transaction.create({
       data: {
@@ -352,9 +381,44 @@ export class DashboardService {
         investmentOpportunityId,
         accountId,
         amount,
+        status,
       },
     });
   }
+
+
+  async  createSellRequest(
+    seller: string,
+    phoneNumber: string,
+    email: string,
+    status: string,
+    product: string,
+    quantity: number,
+    amount: number,
+    accountId: string,
+    investmentOpportunityId: string,
+    userInvestmentId: string,
+    transactionId: string
+  ): Promise<SellRequests>  {
+   
+      const sellRequest = await prisma.sellRequests.create({
+        data: {
+          seller,
+          phoneNumber,
+          email,
+          status,
+          product,
+          quantity,
+          amount,
+          accountId,
+          investmentOpportunityId,
+          userInvestmentId,
+          transactionId,
+        },
+      });
+      
+      return sellRequest;
+    }
 
   async addAccountDetails(userId: string, accountDetailsData: AccountDetailsType): Promise<AccountDetails> {
     const user = await prisma.account.findUnique({ where: { id: userId } });

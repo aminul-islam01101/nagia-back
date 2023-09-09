@@ -20,7 +20,11 @@ import crypto from "crypto";
 import flwApi from "@utils/flw.axios";
 import type { NotificationService } from "../notification/notification.service";
 import { OpportunityIdParams } from "@modules/admin/dashboard/dashboard.schema";
-import sendVerificationEmail, { emailVerificationSetup, sendMailToAnyone, sendPaymentConfirmationEmail } from "@utils/sendgrid";
+import sendVerificationEmail, {
+  emailVerificationSetup,
+  sendMailToAnyone,
+  sendPaymentConfirmationEmail,
+} from "@utils/sendgrid";
 import { emails, insuranceEmails } from "@utils/constants";
 
 export class DashboardController {
@@ -59,7 +63,7 @@ export class DashboardController {
 
   async getOpportunityTitles(req: Request, res: Response): Promise<void> {
     const opportunities = await this.dashboardService.getOpportunityTittles();
-    handleResponse(res, 200, 'Opportunities retrieved successfully', true, opportunities);
+    handleResponse(res, 200, "Opportunities retrieved successfully", true, opportunities);
   }
 
   async getOpportunityById(req: Request, res: Response): Promise<void> {
@@ -151,7 +155,6 @@ export class DashboardController {
         return;
       }
       if (transactionResult.status === true) {
-      
         // const { receiver, link } = await emailVerificationSetup(email, "/api/v1/user/account/verify/");
         // await sendPaymentConfirmationEmail(
         //   email,
@@ -179,7 +182,7 @@ export class DashboardController {
     }
     handleResponse(res, 400, "Invalid data passed", false, { error: passed.error });
   }
-//! pay stack call back
+  //! pay stack call back
 
   async handlePaystackCallback(req: Request, res: Response): Promise<void> {
     const { reference, userInvestmentId, checkoutId } = req.query;
@@ -223,15 +226,14 @@ export class DashboardController {
         "Deposit",
         investmentOpportunityId,
         userId,
-        parseInt(verified.data.metadata.amount)
+        parseInt(verified.data.metadata.amount),
+        "Invested"
       );
       if (checkoutInfo === null) {
         handleResponse(res, 400, "Can't find your checkout info", false, {
           error: "Email won't be sent",
         });
         return;
-      
-
       }
       const user = sendMailToAnyone(
         emails.info,
@@ -317,7 +319,13 @@ You'll get further information from the insurance company on next steps to follo
         const quantity = response.data.meta.quantity;
         // reduce the quantity
         await this.dashboardService.updateInvestmentOpportunity(userInvestmentId, false, parseInt(quantity));
-        await this.dashboardService.createTransaction("Deposit", investmentOpportunityId, userId, response.data.amount);
+        await this.dashboardService.createTransaction(
+          "Deposit",
+          investmentOpportunityId,
+          userId,
+          response.data.amount,
+          "Invested"
+        );
         handleResponse(res, 200, "Payment confirmed", true, { data: response.data });
       } else {
         // Inform the customer their payment was unsuccessful and fail the transaction
@@ -326,7 +334,6 @@ You'll get further information from the insurance company on next steps to follo
       }
     }
   }
-
 
   //! sell product
   async sellProduct(req: Request, res: Response): Promise<void> {
@@ -339,12 +346,16 @@ You'll get further information from the insurance company on next steps to follo
       handleResponse(res, 401, "UserId not found, check that you're logged in", false, {});
       return;
     }
+
+    // % user info
     const userInfo = await this.dashboardService.getUserById(userId);
     const passed = await SellProductSchema.safeParseAsync(req.body);
     if (passed.success) {
       const { investmentOpportunityId, quantity, phoneNumber } = passed.data;
-      const opportunity = await this.dashboardService.getInvestmentOpportunityById(investmentOpportunityId)
 
+      // % product / opportunity
+      const opportunity = await this.dashboardService.getInvestmentOpportunityById(investmentOpportunityId);
+      // % user Investment
       const userInvestment = await this.dashboardService.getUserInvestmentByOpportunity(
         userId,
         investmentOpportunityId
@@ -358,17 +369,49 @@ You'll get further information from the insurance company on next steps to follo
         handleResponse(res, 400, "Cannot sell more than the available quantity", false, {});
         return;
       }
-      const waitingForApproval = await this.dashboardService.sellProduct(userInvestment.id, quantity, phoneNumber);
+
+      const amount = userInvestment.purchasePrice * quantity;
+       // % transactions
+       const newTransaction = await this.dashboardService.createTransaction(
+        "Cashout",
+        investmentOpportunityId,
+        userId,
+        amount,
+        "Sell Approval Pending"
+      );
+      // % sell Product
+      const waitingForApproval = await this.dashboardService.sellProduct(userInvestment.id, quantity, phoneNumber, );
       if (waitingForApproval !== null) {
         handleResponse(res, 200, "Waiting for approval from admin to get your product sold", true, {
           waitingForApproval,
         });
-        const amount = userInvestment.purchasePrice * quantity;
-        await this.dashboardService.createTransaction("Cashout", investmentOpportunityId, userId, amount);
+        
+
+       
+
+        // % notification
         await this.notificationService.createNotification(userId, {
-          message: `Product has been initiated to be sold ${investmentOpportunityId} `,
+          message: `Product with opportunityId ${investmentOpportunityId} has been initiated to be sold `,
         });
-         await sendPaymentConfirmationEmail(
+        // % create sell requests
+        await this.dashboardService.createSellRequest(
+          userInfo?.username as string,
+          phoneNumber,
+          userInfo?.email as string,
+          "Pending",
+          opportunity?.title as string,
+          quantity,
+          amount,
+          userId,
+          investmentOpportunityId,
+          userInvestment.id,
+          newTransaction.id
+        );
+        // % update sell requests quantity
+        await this.dashboardService.updateUserInvestmentSellRequestQuantity(userInvestment.id,quantity)
+        
+        // % mail
+        await sendPaymentConfirmationEmail(
           emails.admin,
           "sell confirmation email",
           `There is a sell request from user from

@@ -26,6 +26,7 @@ model Account {
   notifications  Notification[]
   transactions   Transaction[]
   checkout       Checkout[]
+  sellRequests       SellRequests []
   
 
   @@index([email, username])
@@ -66,6 +67,7 @@ model InvestmentOpportunity {
   updatedAt       DateTime         @updatedAt
   UserInvestment  UserInvestment[]
   transaction     Transaction[]
+  sellRequests    SellRequests []
 }
 
 model UserInvestment {
@@ -80,6 +82,10 @@ model UserInvestment {
   investmentOpportunity   InvestmentOpportunity @relation(fields: [investmentOpportunityId], references: [id], onDelete: Cascade)
   investmentOpportunityId String
   SellProduct             SellProduct[]
+  sellRequests    SellRequests []
+  sellRequestQuantity       Int                   @default(0)
+  soldQuantity              Int                   @default(0)
+              
   verified                Boolean               @default(false)
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
@@ -92,9 +98,12 @@ model SellProduct {
   phoneNumber      String
   UserInvestment   UserInvestment @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
   userInvestmentId String
+  // transaction   Transaction? @relation(fields: [transactionId ], references: [id], onDelete: Cascade)
+  // transactionId    String?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 }
+
 
 model AccountDetails {
   id                String   @id @default(cuid())
@@ -134,6 +143,9 @@ model Transaction {
   investmentOpportunityId String
   accountId               String
   account                 Account               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  status                  String?  
+   sellRequests    SellRequests []
+  //  sellProduct    SellProduct []
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
 }
@@ -150,6 +162,34 @@ model Checkout {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+model SellRequests {
+  id                    String                @id @default(cuid())
+  seller                String
+  phoneNumber           String
+  email                 String
+  status                String
+  product               String
+  quantity              Int
+  amount                Int
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+   accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // Relation to InvestmentOpportunity
+  investmentOpportunity   InvestmentOpportunity @relation(fields: [investmentOpportunityId], references: [id], onDelete: Cascade)
+  investmentOpportunityId String
+
+  // Relation to UserInvestment
+   UserInvestment   UserInvestment @relation(fields: [userInvestmentId], references: [id], onDelete: Cascade)
+  userInvestmentId String
+
+  // Relation to Transaction
+   transaction   Transaction @relation(fields: [transactionId ], references: [id], onDelete: Cascade)
+  transactionId String
+}
+
 
 enum Role {
   INVESTOR

@@ -12,12 +12,13 @@ import {
   VerifyUserPayment,
 } from "./dashboard.schema";
 import type { DashboardService } from "./dashboard.service";
-import { sendMail } from "@utils/sendgrid";
+import { sendMail, sendPaymentConfirmationEmail } from "@utils/sendgrid";
 import type { AuthRequest } from "@interfaces/basic.types";
 import { ValidCUID } from "@modules/user/dashboard/dashboard.schema";
+import type { NotificationService } from "@modules/user/notification/notification.service";
 
 export class DashboardController {
-  constructor(readonly dashboardService: DashboardService) {}
+  constructor(readonly dashboardService: DashboardService, private readonly notificationService: NotificationService) {}
 
   async getUsers(req: Request, res: Response): Promise<void> {
     const { page, limit } = req.query;
@@ -75,13 +76,13 @@ export class DashboardController {
   }
 
   async approveTransaction(req: Request, res: Response): Promise<void> {
-    const { userInvestmentId, transactionId, quantity } = req.body;
+    const { userInvestmentId, sellProductId, quantity, transactionId } = req.body;
     const user = (req as AuthRequest).user;
     if (user.id === undefined) {
       handleResponse(res, 401, "No user id found", false, {});
       return;
     }
-    if (typeof transactionId !== "string") {
+    if (typeof sellProductId !== "string") {
       handleResponse(res, 401, "Invalid transactionId", false, {
         error: "Check the format of the transactionId, it's not a valid string",
       });
@@ -94,18 +95,33 @@ export class DashboardController {
       return;
     }
     // Implement your logic for approving a transaction
-    const approved = await this.dashboardService.approveTransaction(transactionId, userInvestmentId, quantity);
+    const approved = await this.dashboardService.approveTransaction(sellProductId, userInvestmentId, quantity, transactionId);
     if (approved !== null) {
       handleResponse(res, 200, "Transaction approved successfully", true, { approved });
       // send confirmation mail
-      const account = await this.dashboardService.findAccountByIdService(user.id);
+
       const product = await this.dashboardService.getUserInvestmenById(userInvestmentId);
-      if (product === null || account === null) return;
-      await sendMail(
-        [account.email],
+      console.log('🌼 🔥🔥 file: dashboard.controller.ts:104 🔥🔥 DashboardController 🔥🔥 approveTransaction 🔥🔥 product🌼', product);
+
+      const account = await this.dashboardService.findAccountByIdService(product?.userId as string);
+      console.log('🌼 🔥🔥 file: dashboard.controller.ts:107 🔥🔥 DashboardController 🔥🔥 approveTransaction 🔥🔥 account🌼', account);
+
+      // if (product === null || account === null) return;
+      await this.notificationService.createNotification(product?.userId as string, {
+        message: `Product with opportunityId ${product?.investmentOpportunityId as string} has been  sold  `,
+      });
+
+      // % mail
+      await sendPaymentConfirmationEmail(
+        account?.email as string,
         "Sale Approved",
-        `Your sale of ${product.investmentOpportunityId} has been approved.`
+        `Your sale of ${product?.investmentOpportunityId as string} has been approved.`
       );
+      // await sendMail(
+      //   [account.email],
+      //   "Sale Approved",
+      //   `Your sale of ${product.investmentOpportunityId} has been approved.`
+      // );
       return;
     }
     handleResponse(res, 400, "Transaction unapproved, an error occurred", false, { approved });

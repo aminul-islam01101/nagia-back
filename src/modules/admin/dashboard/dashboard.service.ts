@@ -4,7 +4,7 @@ import type {
   AccountDetails,
   InvestmentNews,
   InvestmentOpportunity,
-  SellProduct,
+  SellRequests,
   UserInvestment,
 } from ".prisma/client";
 import { sendMail } from "@utils/sendgrid";
@@ -74,10 +74,11 @@ export class DashboardService {
   }
 
   async approveTransaction(
-    id: string,
+    sellProductId: string,
     userInvestmentId: string,
-    quantity: number
-  ): Promise<[SellProduct, UserInvestment]> {
+    quantity: number,
+    transactionId: string
+  ): Promise<[SellRequests, UserInvestment]> {
     const userInvestment = await prisma.userInvestment.findUnique({
       where: { id: userInvestmentId },
     });
@@ -99,6 +100,12 @@ export class DashboardService {
           quantity: {
             decrement: quantity,
           },
+          sellRequestQuantity: {
+            decrement: quantity,
+          },
+          soldQuantity: {
+            increment: quantity,
+          },
           purchasePrice: {
             decrement: userInvestment.purchasePrice - quantity * userInvestment.purchasePrice,
           },
@@ -106,11 +113,19 @@ export class DashboardService {
         },
       });
     }
-    const sellProduct = prisma.sellProduct.update({
-      where: { id },
-      data: { approved: true },
+    const sellRequest = prisma.sellRequests.update({
+      where: { id: sellProductId },
+      data: { status: 'approved' },
     });
-    return await prisma.$transaction([sellProduct, userInvestment_]);
+    // const sellProduct_ = await prisma.sellProduct.findUnique({
+    //   where: { id: sellProductId },
+    // });
+
+    const transaction = await prisma.transaction.update({
+      where: { id: transactionId },
+      data: { status: "Sold" },
+    });
+    return await prisma.$transaction([sellRequest, userInvestment_,]);
   }
 
   async getUserInvestmenById(id: string): Promise<UserInvestment | null> {
@@ -164,7 +179,7 @@ export class DashboardService {
   async getSellProducts(options: PaginationOptions): Promise<Record<string, any>> {
     const { page, limit } = options;
     const skip = (page - 1) * limit;
-    const sell = await prisma.sellProduct.findMany({
+    const sell = await prisma.sellRequests.findMany({
       skip,
       take: limit,
       orderBy: {
