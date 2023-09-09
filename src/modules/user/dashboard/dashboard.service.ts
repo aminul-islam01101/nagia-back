@@ -12,7 +12,7 @@ import type {
   Transaction,
   TransactionType,
   UserInvestment,
-  SellRequests
+  SellRequests,
 } from "@prisma/client";
 import type {
   AccountDetailsType,
@@ -223,43 +223,37 @@ export class DashboardService {
     }
   }
 
- 
-
-  async sellProduct(userInvestmentId: string, quantity: number, phoneNumber: string, ): Promise<SellProduct> {
+  async sellProduct(userInvestmentId: string, quantity: number, phoneNumber: string): Promise<SellProduct> {
     return await prisma.sellProduct.create({
       data: {
         approved: false,
         userInvestmentId,
         quantity,
         phoneNumber,
- 
-
       },
     });
   }
 
-  async  updateUserInvestmentSellRequestQuantity(id: string, quantityToAdd: number):Promise<UserInvestment>  {
-   
-      // Find the UserInvestment by ID
-      const userInvestment = await prisma.userInvestment.findUnique({
-        where: { id },
-      });
-  
-      if (userInvestment ===null) {
-        throw new Error(`UserInvestment with ID ${id} not found`);
-      }
-  
-      // Update the sellRequestQuantity by adding the specified quantity
-      const updatedUserInvestment = await prisma.userInvestment.update({
-        where: { id },
-        data: {
-          sellRequestQuantity: userInvestment.sellRequestQuantity + quantityToAdd,
-        },
-      });
-  
-      return updatedUserInvestment;
+  async updateUserInvestmentSellRequestQuantity(id: string, quantityToAdd: number): Promise<UserInvestment> {
+    // Find the UserInvestment by ID
+    const userInvestment = await prisma.userInvestment.findUnique({
+      where: { id },
+    });
+
+    if (userInvestment === null) {
+      throw new Error(`UserInvestment with ID ${id} not found`);
     }
 
+    // Update the sellRequestQuantity by adding the specified quantity
+    const updatedUserInvestment = await prisma.userInvestment.update({
+      where: { id },
+      data: {
+        sellRequestQuantity: userInvestment.sellRequestQuantity + quantityToAdd,
+      },
+    });
+
+    return updatedUserInvestment;
+  }
 
   async getUserInvestment(userId: string, params: PaginationSchema): Promise<Record<string, any>> {
     const { page, limit } = params;
@@ -386,8 +380,7 @@ export class DashboardService {
     });
   }
 
-
-  async  createSellRequest(
+  async createSellRequest(
     seller: string,
     phoneNumber: string,
     email: string,
@@ -399,26 +392,25 @@ export class DashboardService {
     investmentOpportunityId: string,
     userInvestmentId: string,
     transactionId: string
-  ): Promise<SellRequests>  {
-   
-      const sellRequest = await prisma.sellRequests.create({
-        data: {
-          seller,
-          phoneNumber,
-          email,
-          status,
-          product,
-          quantity,
-          amount,
-          accountId,
-          investmentOpportunityId,
-          userInvestmentId,
-          transactionId,
-        },
-      });
-      
-      return sellRequest;
-    }
+  ): Promise<SellRequests> {
+    const sellRequest = await prisma.sellRequests.create({
+      data: {
+        seller,
+        phoneNumber,
+        email,
+        status,
+        product,
+        quantity,
+        amount,
+        accountId,
+        investmentOpportunityId,
+        userInvestmentId,
+        transactionId,
+      },
+    });
+
+    return sellRequest;
+  }
 
   async addAccountDetails(userId: string, accountDetailsData: AccountDetailsType): Promise<AccountDetails> {
     const user = await prisma.account.findUnique({ where: { id: userId } });
@@ -432,6 +424,20 @@ export class DashboardService {
         user: { connect: { id: userId } },
       },
     });
+  }
+
+  async updateAccountDetails(accountId: string, accountDetailsData: AccountDetailsType): Promise<AccountDetails> {
+    try {
+      const updatedAccountDetails = await prisma.accountDetails.update({
+        where: { id: accountId },
+        data: accountDetailsData,
+      });
+
+      return updatedAccountDetails;
+    } catch (error) {
+      // Handle any errors here
+      throw new Error(`Error updating account details`);
+    }
   }
 
   async addPaymentDetails(userId: string, paymentDetailsData: PaymentDetailsType): Promise<PaymentDetails> {
@@ -448,8 +454,23 @@ export class DashboardService {
     });
   }
 
+  async getExistingAccount(bankName: string, accountNumber: string): Promise<AccountDetails | null> {
+    return await prisma.accountDetails.findFirst({
+      where: {
+        bankName,
+        accountNumber,
+      },
+    });
+  }
+
   async getAccountDetails(userId: string): Promise<AccountDetails[] | null> {
     return await prisma.accountDetails.findMany({ where: { userId } });
+  }
+
+  async deleteAccountById(accountId: string): Promise<AccountDetails | null> {
+    return await prisma.accountDetails.delete({
+      where: { id: accountId },
+    });
   }
 
   async getPaymentDetails(userId: string): Promise<Prisma.PaymentDetailsWhereUniqueInput[] | null> {

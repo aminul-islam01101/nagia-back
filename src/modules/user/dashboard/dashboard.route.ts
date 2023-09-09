@@ -495,6 +495,18 @@ router.post(
   checkRoles("INVESTOR"),
   asyncHandler(dashboardModule.dashboardController.addAccountDetails.bind(dashboardModule))
 );
+router.patch(
+  "/update-account/:accountId",
+  auth,
+  checkRoles("INVESTOR"),
+  asyncHandler(dashboardModule.dashboardController.updateAccount.bind(dashboardModule))
+);
+router.delete(
+  "/delete-account/:accountId",
+  auth,
+  checkRoles("INVESTOR"),
+  asyncHandler(dashboardModule.dashboardController.deleteAccount.bind(dashboardModule))
+);
 
 /**
  * @swagger

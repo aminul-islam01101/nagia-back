@@ -543,11 +543,19 @@ You'll get further information from the insurance company on next steps to follo
 
   async addAccountDetails(req: Request, res: Response): Promise<void> {
     const passed = await AccountDetailsSchema.safeParseAsync(req.body);
+   
     if (passed.success) {
+      const existData = await this.dashboardService.getExistingAccount(passed.data.bankName, passed.data.accountNumber)
+    
+      if (existData!== null) {
+        handleResponse(res, 409, "account already exist", false, { error: "conflicts" });
+        return;
+      }
       const accountDetails = await this.dashboardService.addAccountDetails(
         (req as AuthRequest).user.id as string,
         passed.data
       );
+     
       handleResponse(res, 201, "Account details added successfully", true, accountDetails);
       await this.notificationService.createNotification((req as AuthRequest).user.id as string, {
         message: `Account details has been added successfully`,
@@ -557,6 +565,44 @@ You'll get further information from the insurance company on next steps to follo
         error: passed.error,
       });
     }
+  }
+
+  async updateAccount(req: Request, res: Response): Promise<void> {
+    const accountId = req.params.accountId;
+    const validCuid = await ValidCUID.safeParseAsync({ id: accountId });
+    if (!validCuid.success) {
+      handleResponse(res, 400, "Invalid accountId", false, { error: validCuid.error });
+      return;
+    }
+    const passed = await AccountDetailsSchema.safeParseAsync(req.body);
+
+
+    if (passed.success) {
+      const accountDetails = await this.dashboardService.updateAccountDetails(
+        accountId ,
+        passed.data
+      );
+    
+      handleResponse(res, 201, "Account details updated successfully", true, accountDetails);
+      await this.notificationService.createNotification((req as AuthRequest).user.id as string, {
+        message: `Account details has been Updated successfully`,
+      });
+    } else {
+      handleResponse(res, 400, "Invalid account details data", false, {
+        error: passed.error,
+      });
+    }
+  }
+
+  async deleteAccount(req: Request, res: Response): Promise<void> {
+    const accountId = req.params.accountId;
+    const validCuid = await ValidCUID.safeParseAsync({ id: accountId });
+    if (!validCuid.success) {
+      handleResponse(res, 400, "Invalid accountId", false, { error: validCuid.error });
+      return;
+    }
+    await this.dashboardService.deleteAccountById(accountId);
+    handleResponse(res, 200, "account deleted successfully", true, {});
   }
 
   async addPaymentDetails(req: Request, res: Response): Promise<void> {
