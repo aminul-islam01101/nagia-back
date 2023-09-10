@@ -281,7 +281,7 @@ You'll get further information from the insurance company on next steps to follo
       handleResponse(res, 200, "Payment confirmed", true, { verified });
       return;
     }
-    await this.dashboardService.updateInvestmentOpportunity(userInvestmentId, true);
+    await this.dashboardService.updateInvestmentOpportunity(userInvestmentId, true,);
     handleResponse(res, 400, "Payment was unsuccessful", false, { verified });
   }
 

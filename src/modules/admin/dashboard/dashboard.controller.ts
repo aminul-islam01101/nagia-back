@@ -12,10 +12,11 @@ import {
   VerifyUserPayment,
 } from "./dashboard.schema";
 import type { DashboardService } from "./dashboard.service";
-import { sendMail, sendPaymentConfirmationEmail } from "@utils/sendgrid";
+import { sendMail, sendMailToAnyone, sendPaymentConfirmationEmail } from "@utils/sendgrid";
 import type { AuthRequest } from "@interfaces/basic.types";
 import { ValidCUID } from "@modules/user/dashboard/dashboard.schema";
 import type { NotificationService } from "@modules/user/notification/notification.service";
+import { emails, insuranceEmails } from "@utils/constants";
 
 export class DashboardController {
   constructor(readonly dashboardService: DashboardService, private readonly notificationService: NotificationService) {}
@@ -101,11 +102,7 @@ export class DashboardController {
       // send confirmation mail
 
       const product = await this.dashboardService.getUserInvestmenById(userInvestmentId);
-      console.log('🌼 🔥🔥 file: dashboard.controller.ts:104 🔥🔥 DashboardController 🔥🔥 approveTransaction 🔥🔥 product🌼', product);
-
       const account = await this.dashboardService.findAccountByIdService(product?.userId as string);
-      console.log('🌼 🔥🔥 file: dashboard.controller.ts:107 🔥🔥 DashboardController 🔥🔥 approveTransaction 🔥🔥 account🌼', account);
-
       // if (product === null || account === null) return;
       await this.notificationService.createNotification(product?.userId as string, {
         message: `Product with opportunityId ${product?.investmentOpportunityId as string} has been  sold  `,
@@ -374,4 +371,58 @@ export class DashboardController {
     const paymentDetails = await this.dashboardService.verifyUserPayment(userInvestmentId, quantity);
     handleResponse(res, 200, "Payment details retrieved successfully", true, { data: paymentDetails });
   }
+
+  async adminBuy(req: Request, res: Response): Promise<void> {
+    const bodyData = req.body;
+    const {currency,quantity, email: adminEmail,amount,investmentOpportunityId} = bodyData
+    const {id: userAccountId,email: userEmail, profile , username} =bodyData.user
+
+    // const validCuid = await ValidCUID.safeParseAsync({ id: accountId });
+    // if (!validCuid.success) {
+    //   handleResponse(res, 400, "Invalid accountId", false, {});
+    //   return;
+    // }
+    // const parsed = await VerifyUserPayment.safeParseAsync(req.body);
+    // if (!parsed.success) {
+    //   handleResponse(res, 400, "Bad Request", false, { error: parsed.error });
+    //   return;
+    // }
+    // const { userInvestmentId, quantity } = parsed.data;
+    const investment = await this.dashboardService.getInvestmentOpportunityById(investmentOpportunityId);
+     await this.dashboardService.adminBuy(quantity,amount,adminEmail,userEmail,userAccountId ,investmentOpportunityId);
+     await this.dashboardService.createTransaction(
+      "Deposit",
+      investmentOpportunityId,
+      userAccountId,
+      parseInt(amount),
+      "Invested"
+    );
+    await this.notificationService.createNotification(userAccountId as string, {
+      message: `Product with opportunityId ${investmentOpportunityId as string} has been  invested  `,
+    });
+
+    const user = sendMailToAnyone(
+      emails.info,
+      userEmail,
+      `
+            This is confirmation for purchase of 
+            product: ${String(investment?.title)}
+            with ID: ${String(investment?.id)} purchased on ${new Intl.DateTimeFormat("en-GB", {
+        dateStyle: "full",
+        timeStyle: "long",
+      }).format(new Date())}
+  Name - ${username as string} \n 
+  Email - ${userEmail as string} \n 
+            Phone Number - ${profile.phoneNumber as string} \n
+  Amount - ${Number(amount)} \n
+You'll get further information from the insurance company on next steps to follow.
+`,
+      "Buy Product Confirmation",
+      "Nagaing"
+    );
+    handleResponse(res, 200, "Investment done successfully", true, { data: bodyData });
+  }
+
 }
+ 
+

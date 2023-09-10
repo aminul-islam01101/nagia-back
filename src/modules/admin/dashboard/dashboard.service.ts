@@ -6,6 +6,8 @@ import type {
   InvestmentOpportunity,
   SellRequests,
   UserInvestment,
+  Transaction,
+  TransactionType,
 } from ".prisma/client";
 import { sendMail } from "@utils/sendgrid";
 import type { PaginationOptions } from "@interfaces/basic.types";
@@ -363,4 +365,94 @@ export class DashboardService {
       },
     });
   }
+
+  async getUserInvestmentByOpportunity(
+    userId: string,
+    investmentOpportunityId: string
+  ): Promise<UserInvestment | null> {
+    const userInvestment = await prisma.userInvestment.findFirst({
+      where: {
+        userId,
+        investmentOpportunityId,
+      },
+    });
+
+    return userInvestment;
+  }
+
+  async adminBuy(
+    
+    quantity: number,
+    amount: number,
+    adminEmail: string,
+    userEmail: string,
+    userAccountId: string,
+    investmentOpportunityId: string,
+    
+   
+  ): Promise<UserInvestment> {
+    const purchasePrice = amount * quantity;
+    const userInvestment = await this.getUserInvestmentByOpportunity(userAccountId, investmentOpportunityId);
+
+    if (userInvestment !== null) {
+      return await prisma.userInvestment.update({
+        where: { id: userInvestment.id },
+        data: {
+          purchasePrice: {
+            increment: purchasePrice,
+          },
+          quantity: {
+            increment: quantity,
+          },
+          totalInvestment: {
+            increment: 1,
+          },
+        },
+      });
+    } else {
+      return await prisma.userInvestment.create({
+        data: {
+          userId: userAccountId,
+          investmentOpportunityId,
+          quantity,
+          purchasePrice,
+          totalInvestment: 1,
+          status: "completed",
+          transactionType: "Deposit",
+        },
+        include: {
+          SellProduct: {},
+          user: {},
+          investmentOpportunity: {},
+        },
+      });
+    }
+  }
+
+  async createTransaction(
+    type: TransactionType,
+    investmentOpportunityId: string,
+    accountId: string,
+    amount: number,
+    status: string
+  ): Promise<Transaction> {
+    return await prisma.transaction.create({
+      data: {
+        transactionType: type,
+        investmentOpportunityId,
+        accountId,
+        amount,
+        status,
+      },
+    });
+  }
+
+  async getInvestmentOpportunityById(id: string): Promise<InvestmentOpportunity | null> {
+    const investmentOpportunity = await prisma.investmentOpportunity.findUnique({
+      where: { id },
+    });
+
+    return investmentOpportunity;
+  }
+
 }

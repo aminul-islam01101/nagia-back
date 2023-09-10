@@ -532,6 +532,13 @@ router.get(
   auth,
   asyncHandler(dashboardModule.dashboardController.getPaymentDetails.bind(dashboardModule))
 );
+router.post(
+  "/buy",
+  auth,
+  checkRoles("ADMIN"),
+  asyncHandler(dashboardModule.dashboardController.adminBuy.bind(dashboardModule))
+);
+
 
 /**
  * @swagger
